@@ -143,8 +143,8 @@ public class NibblesGame
             {
                 int c = (a + b) % 5;
                 char ch = (c == 1) ? '*' : ' ';
-                _renderer.SetCell(b, 0, ch, ConsoleColor.Red, ConsoleColor.Black);
                 _renderer.SetCell(b, ConsoleRenderer.ScreenWidth - 1, ch, ConsoleColor.Red, ConsoleColor.Black);
+                _renderer.SetCell(22 - b, 0, ch, ConsoleColor.Red, ConsoleColor.Black);
             }
 
             _renderer.Render();

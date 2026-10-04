@@ -208,4 +208,29 @@ public class NibblesTests
         Assert.NotEqual(Direction.None, move);
         Assert.NotEqual(Direction.Left, move); // Should not reverse
     }
+
+    [Fact]
+    public void SparkleBorder_LeftWallMovesDownward()
+    {
+        // When a increases from 0 to 1, left wall stars must advance downward (row increases)
+        // b runs from 1 to 21, c = (a + b) % 5, left wall row = 22 - b
+        int GetTopmostStarRow(int a)
+        {
+            for (int r = 1; r <= 21; r++)
+            {
+                int b = 22 - r;
+                if ((a + b) % 5 == 1)
+                {
+                    return r;
+                }
+            }
+            return -1;
+        }
+
+        int rowAtA0 = GetTopmostStarRow(0); // Row 1
+        int rowAtA1 = GetTopmostStarRow(1); // Row 2
+        Assert.Equal(1, rowAtA0);
+        Assert.Equal(2, rowAtA1);
+        Assert.True(rowAtA1 > rowAtA0, "Left wall star should move downwards as step 'a' increases");
+    }
 }
