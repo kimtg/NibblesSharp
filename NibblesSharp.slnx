@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="NibblesSharp.csproj" />
+  <Project Path="NibblesSharp.Tests/NibblesSharp.Tests.csproj" />
+</Solution>
