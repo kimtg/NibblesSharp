@@ -217,7 +217,7 @@ public class ConsoleRenderer
         if (paddedMsg.Length > 29) paddedMsg = paddedMsg[..29];
 
         string top    = "╔═════════════════════════════╗";
-        string middle = "║ " + paddedMsg + " ║";
+        string middle = "║" + paddedMsg + "║";
         string bottom = "╚═════════════════════════════╝";
 
         WriteCentered(centerRow0 - 1, top, colors.DialogFore, colors.DialogBack);

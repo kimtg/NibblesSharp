@@ -93,7 +93,7 @@ public class NibblesGame
         _renderer.WriteCentered(14, " General             Player 1               Player 2    ", ConsoleColor.Gray, ConsoleColor.Black);
         _renderer.WriteCentered(15, "                       (Up)                   (Up)      ", ConsoleColor.Gray, ConsoleColor.Black);
         _renderer.WriteCentered(16, "P - Pause               ↑                      W        ", ConsoleColor.White, ConsoleColor.Black);
-        _renderer.WriteCentered(17, "                    (Left) ←   → (Right)   (Left) A   D (Right) ", ConsoleColor.White, ConsoleColor.Black);
+        _renderer.WriteCentered(17, "                   (Left) ←   → (Right)   (Left) A   D (Right) ", ConsoleColor.White, ConsoleColor.Black);
         _renderer.WriteCentered(18, "                        ↓                      S        ", ConsoleColor.White, ConsoleColor.Black);
         _renderer.WriteCentered(19, "                      (Down)                 (Down)     ", ConsoleColor.Gray, ConsoleColor.Black);
         _renderer.WriteCentered(21, "M - Toggle Sound  |  Esc - Exit", ConsoleColor.DarkGray, ConsoleColor.Black);
