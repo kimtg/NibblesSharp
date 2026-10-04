@@ -219,24 +219,39 @@ public class NibblesGame
         _curLevel = 1;
         _curDelayMs = _config.CalculateInitialDelayMs();
 
-        // Initial setup for level 1
-        StartLevel(STARTOVER: true);
-
-        // SpacePause Level 1
-        SpacePause($"     Level {_curLevel},  Push Space");
-        if (_quitRequested) return;
+        bool showLevelPause = true;
 
         // Play rounds until a player runs out of lives
         while (!_quitRequested && _sammy.Lives > 0 && (_config.NumPlayers == 1 || _jake.Lives > 0))
         {
-            PlayRound();
+            // Initial setup for current level
+            StartLevel(STARTOVER: false);
+
+            if (showLevelPause)
+            {
+                SpacePause($"     Level {_curLevel},  Push Space");
+                if (_quitRequested) return;
+            }
+
+            // Play the round until either player dies or level is won
+            bool levelWon = PlayRound();
 
             if (_quitRequested) return;
 
-            if (_sammy.Lives > 0 && (_config.NumPlayers == 1 || _jake.Lives > 0))
+            if (levelWon)
             {
-                // Prepare for next attempt at same level
-                StartLevel(STARTOVER: false);
+                _curLevel++;
+                if (_config.IncreaseSpeed)
+                {
+                    _curDelayMs = Math.Max(20, _curDelayMs - 8);
+                }
+                showLevelPause = true;
+            }
+            else
+            {
+                // Player died. They already pressed space on "Sammy Dies! Push Space!",
+                // so restart the same level immediately without redundant pause prompt.
+                showLevelPause = false;
             }
         }
     }
@@ -275,11 +290,15 @@ public class NibblesGame
         _renderer.FullRepaint();
     }
 
-    private void PlayRound()
+    /// <summary>
+    /// Plays one round of the current level until a player dies (returns false) or beats the level (returns true).
+    /// </summary>
+    private bool PlayRound()
     {
         _number = 1;
         _hasNumber = false;
         bool playerDied = false;
+        bool levelCompleted = false;
 
         _renderer.DrawScores(_config.NumPlayers, _sammy, _jake, _colors);
         if (_config.IsDemoMode)
@@ -291,7 +310,7 @@ public class NibblesGame
         // Round start tune
         SoundEngine.PlayAsync("T160O1>L20CDEDCDL10ECC");
 
-        while (!playerDied && !_quitRequested)
+        while (!playerDied && !levelCompleted && !_quitRequested)
         {
             // Spawn number if none exists
             if (!_hasNumber)
@@ -321,7 +340,7 @@ public class NibblesGame
                 }
             }
 
-            if (_quitRequested) return;
+            if (_quitRequested) return false;
 
             // Apply queued directions
             _sammy.ApplyQueuedDirection();
@@ -340,13 +359,14 @@ public class NibblesGame
             }
 
             // Check number eating for both snakes
-            CheckNumberEaten(_sammy, ref playerDied);
-            if (!playerDied && _config.NumPlayers == 2 && _jake.Alive)
+            CheckNumberEaten(_sammy, ref levelCompleted);
+            if (!levelCompleted && _config.NumPlayers == 2 && _jake.Alive)
             {
-                CheckNumberEaten(_jake, ref playerDied);
+                CheckNumberEaten(_jake, ref levelCompleted);
             }
 
-            if (playerDied || _quitRequested) break;
+            // If level was won, exit the round immediately before collision checks
+            if (levelCompleted) break;
 
             // Check collisions for Sammy
             CheckSnakeCollision(_sammy, _jake, ref playerDied);
@@ -362,7 +382,21 @@ public class NibblesGame
         if (playerDied && !_quitRequested)
         {
             HandlePlayerDeath();
+            return false;
         }
+
+        // When level was won (numbers 1-9 eaten)
+        if (levelCompleted && !_quitRequested)
+        {
+            EraseSnakeWithAnimation(_sammy);
+            if (_config.NumPlayers == 2)
+            {
+                EraseSnakeWithAnimation(_jake);
+            }
+            return true;
+        }
+
+        return false;
     }
 
     private void SpawnNumber()
@@ -396,7 +430,7 @@ public class NibblesGame
         }
     }
 
-    private void CheckNumberEaten(Snake snake, ref bool playerDied)
+    private void CheckNumberEaten(Snake snake, ref bool levelCompleted)
     {
         if (!_hasNumber) return;
 
@@ -426,25 +460,10 @@ public class NibblesGame
             // Clear number text cell from screen
             _renderer.SyncArenaCell(_numScreenRow0, _numCol0, _arena, _colors, _hasNumber, _numScreenRow0, _numCol0, _number);
 
-            // Completed all 9 numbers -> Advance to next level!
+            // Completed all 9 numbers -> Flag level completed to advance cleanly!
             if (_number == 10)
             {
-                EraseSnakeWithAnimation(_sammy);
-                if (_config.NumPlayers == 2)
-                {
-                    EraseSnakeWithAnimation(_jake);
-                }
-
-                _curLevel++;
-                if (_config.IncreaseSpeed)
-                {
-                    _curDelayMs = Math.Max(20, _curDelayMs - 8);
-                }
-
-                StartLevel(STARTOVER: false);
-                SpacePause($"     Level {_curLevel},  Push Space");
-                _number = 1;
-                SoundEngine.PlayAsync("T160O1>L20CDEDCDL10ECC");
+                levelCompleted = true;
             }
         }
     }

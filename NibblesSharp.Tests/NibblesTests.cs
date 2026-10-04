@@ -233,4 +233,38 @@ public class NibblesTests
         Assert.Equal(2, rowAtA1);
         Assert.True(rowAtA1 > rowAtA0, "Left wall star should move downwards as step 'a' increases");
     }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    [InlineData(6)]
+    [InlineData(7)]
+    [InlineData(8)]
+    [InlineData(9)]
+    [InlineData(10)]
+    public void AllLevels_SpawnPositionsDoNotCollideOnInitialMoves(int level)
+    {
+        var arena = new GameArena();
+        var colors = ColorPalette.ColorMode;
+        var sammy = new Snake("Sammy", colors.Snake1);
+        var jake = new Snake("Jake", colors.Snake2);
+
+        LevelManager.InitializeLevel(level, arena, sammy, jake, colors);
+
+        // Neither spawn point should be a wall
+        Assert.False(arena.PointIsThere(sammy.Row, sammy.Col, colors.Background), $"Level {level}: Sammy spawn ({sammy.Row}, {sammy.Col}) is inside a wall!");
+        Assert.False(arena.PointIsThere(jake.Row, jake.Col, colors.Background), $"Level {level}: Jake spawn ({jake.Row}, {jake.Col}) is inside a wall!");
+
+        // First step in initial direction must also not hit a wall
+        int sNextRow = sammy.Row + (sammy.Direction == Direction.Up ? -1 : sammy.Direction == Direction.Down ? 1 : 0);
+        int sNextCol = sammy.Col + (sammy.Direction == Direction.Left ? -1 : sammy.Direction == Direction.Right ? 1 : 0);
+        Assert.False(arena.PointIsThere(sNextRow, sNextCol, colors.Background), $"Level {level}: Sammy first step ({sNextRow}, {sNextCol}) hits a wall!");
+
+        int jNextRow = jake.Row + (jake.Direction == Direction.Up ? -1 : jake.Direction == Direction.Down ? 1 : 0);
+        int jNextCol = jake.Col + (jake.Direction == Direction.Left ? -1 : jake.Direction == Direction.Right ? 1 : 0);
+        Assert.False(arena.PointIsThere(jNextRow, jNextCol, colors.Background), $"Level {level}: Jake first step ({jNextRow}, {jNextCol}) hits a wall!");
+    }
 }
