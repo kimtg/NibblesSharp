@@ -12,6 +12,7 @@ public class NibblesGame
     private readonly Snake _jake;
     private readonly GameConfig _config;
     private readonly Random _random = new();
+    private readonly HighScoreManager _highScoreManager = new();
 
     private ColorPalette _colors = ColorPalette.ColorMode;
     private int _curLevel = 1;
@@ -73,6 +74,10 @@ public class NibblesGame
         // Clean exit
         Console.ResetColor();
         Console.Clear();
+        if (!_config.IsDemoMode)
+        {
+            _highScoreManager.PrintScoresToConsole();
+        }
         Console.WriteLine("Thank you for playing QBasic Nibbles!");
     }
 
@@ -168,13 +173,36 @@ public class NibblesGame
         Console.WriteLine("                   =======================================");
         Console.WriteLine();
 
-        // 1. Number of players
-        Console.Write("                   How many players (1 or 2) [Default: 1]: ");
-        string? numInput = Console.ReadLine()?.Trim();
-        if (numInput == "2")
+        // 1. Game Mode / Number of players
+        Console.WriteLine("                   Select Game Mode:");
+        Console.WriteLine("                   1 = 1 Player (Solo)");
+        Console.WriteLine("                   2 = 1 Player vs Computer AI (Jake)");
+        Console.WriteLine("                   3 = 2 Players (Sammy & Jake)");
+        Console.Write("                   Select mode (1, 2, or 3) [Default: 1]: ");
+        string? modeInput = Console.ReadLine()?.Trim();
+        if (modeInput == "2")
+        {
             _config.NumPlayers = 2;
+            _config.IsVsAiMode = true;
+        }
+        else if (modeInput == "3")
+        {
+            _config.NumPlayers = 2;
+            _config.IsVsAiMode = false;
+        }
         else
+        {
             _config.NumPlayers = 1;
+            _config.IsVsAiMode = false;
+        }
+
+        Console.WriteLine();
+        Console.Write("                   Starting Level (1 to 10) [Default: 1]: ");
+        string? lvlInput = Console.ReadLine()?.Trim();
+        if (int.TryParse(lvlInput, out int sLvl) && sLvl >= 1 && sLvl <= 10)
+            _config.StartLevel = sLvl;
+        else
+            _config.StartLevel = 1;
 
         Console.WriteLine();
         Console.WriteLine("                   Skill level (1 to 100) [Default: 50]:");
@@ -216,8 +244,12 @@ public class NibblesGame
         _jake.Lives = 5;
         _jake.Score = 0;
 
-        _curLevel = 1;
+        _curLevel = Math.Clamp(_config.StartLevel, 1, 10);
         _curDelayMs = _config.CalculateInitialDelayMs();
+        if (_config.IncreaseSpeed && _curLevel > 1)
+        {
+            _curDelayMs = Math.Max(20, _curDelayMs - (_curLevel - 1) * 8);
+        }
 
         bool showLevelPause = true;
 
@@ -240,6 +272,11 @@ public class NibblesGame
 
             if (levelWon)
             {
+                if (_curLevel == 9)
+                {
+                    SpacePause("  All 9 Mazes Won! Super!   ");
+                }
+
                 _curLevel++;
                 if (_config.IncreaseSpeed)
                 {
@@ -254,6 +291,57 @@ public class NibblesGame
                 showLevelPause = false;
             }
         }
+
+        if (!_quitRequested)
+        {
+            // Announce Match Winner if 2 players or Vs AI
+            if (_config.NumPlayers == 2)
+            {
+                string winnerMsg;
+                if (_sammy.Lives > 0 && _jake.Lives == 0)
+                {
+                    winnerMsg = _config.IsVsAiMode ? " Sammy Defeated the AI! " : "   Sammy Wins the Match!   ";
+                }
+                else if (_jake.Lives > 0 && _sammy.Lives == 0)
+                {
+                    winnerMsg = _config.IsVsAiMode ? "  Computer AI (Jake) Won!  " : "    Jake Wins the Match!   ";
+                }
+                else
+                {
+                    if (_sammy.Score > _jake.Score)
+                        winnerMsg = "  Sammy Wins on Points!   ";
+                    else if (_jake.Score > _sammy.Score)
+                        winnerMsg = "   Jake Wins on Points!   ";
+                    else
+                        winnerMsg = "    Tie Match! Well Done!  ";
+                }
+                SpacePause(winnerMsg);
+            }
+
+            // High score check
+            if (!_config.IsDemoMode)
+            {
+                string mode = _config.IsVsAiMode ? "VsAI" : (_config.NumPlayers == 2 ? "2P" : "Solo");
+                if (_highScoreManager.IsHighScore(_sammy.Score))
+                {
+                    PromptAndSaveHighScore(_sammy, mode);
+                }
+                if (_config.NumPlayers == 2 && !_config.IsVsAiMode && _highScoreManager.IsHighScore(_jake.Score))
+                {
+                    PromptAndSaveHighScore(_jake, mode);
+                }
+            }
+        }
+    }
+
+    private void PromptAndSaveHighScore(Snake snake, string mode)
+    {
+        const int centerRow0 = 11;
+        _renderer.DrawDialog(centerRow0, $" NEW HIGH SCORE: {snake.Score}! ", _colors);
+        _renderer.Render();
+        Thread.Sleep(1200);
+
+        _highScoreManager.AddScore(snake.Name, snake.Score, _curLevel, mode);
     }
 
     private void StartLevel(bool STARTOVER)
@@ -279,7 +367,7 @@ public class NibblesGame
         }
 
         _hasNumber = false;
-        _renderer.DrawScores(_config.NumPlayers, _sammy, _jake, _colors);
+        _renderer.DrawScores(_config.NumPlayers, _sammy, _jake, _colors, _config.IsVsAiMode);
 
         if (_config.IsDemoMode)
         {
@@ -300,7 +388,7 @@ public class NibblesGame
         bool playerDied = false;
         bool levelCompleted = false;
 
-        _renderer.DrawScores(_config.NumPlayers, _sammy, _jake, _colors);
+        _renderer.DrawScores(_config.NumPlayers, _sammy, _jake, _colors, _config.IsVsAiMode);
         if (_config.IsDemoMode)
         {
             _renderer.WriteString(0, 31, "[DEMO AUTO-PILOT]", ConsoleColor.Cyan, _colors.Background);
@@ -338,6 +426,12 @@ public class NibblesGame
                     var jakeDir = NibblesAI.DetermineNextMove(_jake, _arena, _colors, _numScreenRow0, _numCol0, _sammy);
                     _jake.SetDirection(jakeDir);
                 }
+            }
+            else if (_config.IsVsAiMode && _config.NumPlayers == 2 && _jake.Alive)
+            {
+                // Autonomous AI movement for computer opponent Jake
+                var jakeDir = NibblesAI.DetermineNextMove(_jake, _arena, _colors, _numScreenRow0, _numCol0, _sammy);
+                _jake.SetDirection(jakeDir);
             }
 
             if (_quitRequested) return false;
@@ -448,7 +542,7 @@ public class NibblesGame
             }
 
             snake.Score += _number;
-            _renderer.DrawScores(_config.NumPlayers, _sammy, _jake, _colors);
+            _renderer.DrawScores(_config.NumPlayers, _sammy, _jake, _colors, _config.IsVsAiMode);
             if (_config.IsDemoMode)
             {
                 _renderer.WriteString(0, 31, "[DEMO AUTO-PILOT]", ConsoleColor.Cyan, _colors.Background);
@@ -529,17 +623,18 @@ public class NibblesGame
             EraseSnakeWithAnimation(_jake);
         }
 
-        // Deduct 10 points and show Death dialog
+        // Deduct 10 points and show Death dialog (both snakes lose points if both died)
         if (!_sammy.Alive)
         {
             _sammy.Score = Math.Max(0, _sammy.Score - 10);
-            _renderer.DrawScores(_config.NumPlayers, _sammy, _jake, _colors);
+            _renderer.DrawScores(_config.NumPlayers, _sammy, _jake, _colors, _config.IsVsAiMode);
             SpacePause(" Sammy Dies! Push Space! --->");
         }
-        else if (_config.NumPlayers == 2 && !_jake.Alive)
+
+        if (_config.NumPlayers == 2 && !_jake.Alive)
         {
             _jake.Score = Math.Max(0, _jake.Score - 10);
-            _renderer.DrawScores(_config.NumPlayers, _sammy, _jake, _colors);
+            _renderer.DrawScores(_config.NumPlayers, _sammy, _jake, _colors, _config.IsVsAiMode);
             SpacePause(" <---- Jake Dies! Push Space ");
         }
     }
@@ -580,11 +675,11 @@ public class NibblesGame
                 case ConsoleKey.LeftArrow:  if (!_config.IsDemoMode) _sammy.SetDirection(Direction.Left); break;
                 case ConsoleKey.RightArrow: if (!_config.IsDemoMode) _sammy.SetDirection(Direction.Right); break;
 
-                // Player 2 (Jake) - W/A/S/D
-                case ConsoleKey.W:          if (!_config.IsDemoMode) _jake.SetDirection(Direction.Up); break;
-                case ConsoleKey.S:          if (!_config.IsDemoMode) _jake.SetDirection(Direction.Down); break;
-                case ConsoleKey.A:          if (!_config.IsDemoMode) _jake.SetDirection(Direction.Left); break;
-                case ConsoleKey.D:          if (!_config.IsDemoMode) _jake.SetDirection(Direction.Right); break;
+                // Player 2 (Jake) - W/A/S/D (only in human 2-player mode)
+                case ConsoleKey.W:          if (!_config.IsDemoMode && !_config.IsVsAiMode) _jake.SetDirection(Direction.Up); break;
+                case ConsoleKey.S:          if (!_config.IsDemoMode && !_config.IsVsAiMode) _jake.SetDirection(Direction.Down); break;
+                case ConsoleKey.A:          if (!_config.IsDemoMode && !_config.IsVsAiMode) _jake.SetDirection(Direction.Left); break;
+                case ConsoleKey.D:          if (!_config.IsDemoMode && !_config.IsVsAiMode) _jake.SetDirection(Direction.Right); break;
 
                 // Pause
                 case ConsoleKey.P:
@@ -627,7 +722,7 @@ public class NibblesGame
             if (Console.KeyAvailable)
             {
                 var key = Console.ReadKey(true);
-                if (key.Key == ConsoleKey.Spacebar)
+                if (key.Key == ConsoleKey.Spacebar || key.Key == ConsoleKey.P)
                 {
                     break;
                 }

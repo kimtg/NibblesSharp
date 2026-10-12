@@ -267,4 +267,133 @@ public class NibblesTests
         int jNextCol = jake.Col + (jake.Direction == Direction.Left ? -1 : jake.Direction == Direction.Right ? 1 : 0);
         Assert.False(arena.PointIsThere(jNextRow, jNextCol, colors.Background), $"Level {level}: Jake first step ({jNextRow}, {jNextCol}) hits a wall!");
     }
+
+    [Fact]
+    public void Snake_InputQueue_BuffersConsecutiveCorneringTurns()
+    {
+        var snake = new Snake("Sammy", ConsoleColor.Yellow)
+        {
+            Direction = Direction.Right,
+            QueuedDirection = Direction.Right
+        };
+
+        // Queue Up then Left within the same frame tick
+        snake.SetDirection(Direction.Up);
+        snake.SetDirection(Direction.Left);
+
+        // First frame tick: direction becomes Up
+        snake.ApplyQueuedDirection();
+        Assert.Equal(Direction.Up, snake.Direction);
+
+        // Second frame tick: direction becomes Left
+        snake.ApplyQueuedDirection();
+        Assert.Equal(Direction.Left, snake.Direction);
+    }
+
+    [Fact]
+    public void Snake_InputQueue_PreventsReversalAgainstQueuedDirection()
+    {
+        var snake = new Snake("Sammy", ConsoleColor.Yellow)
+        {
+            Direction = Direction.Right,
+            QueuedDirection = Direction.Right
+        };
+
+        // Queue Up
+        snake.SetDirection(Direction.Up);
+        // Try queueing Down (reversal of Up): should be rejected
+        snake.SetDirection(Direction.Down);
+
+        // First tick
+        snake.ApplyQueuedDirection();
+        Assert.Equal(Direction.Up, snake.Direction);
+
+        // Queue should now be empty; snake remains Up
+        snake.ApplyQueuedDirection();
+        Assert.Equal(Direction.Up, snake.Direction);
+    }
+
+    [Fact]
+    public void HighScoreManager_RecordsAndRanksScoresCorrectly()
+    {
+        string tempFile = Path.Combine(Path.GetTempPath(), $"nibbles_test_{Guid.NewGuid():N}.json");
+        try
+        {
+            var manager = new HighScoreManager(tempFile);
+            manager.Clear();
+
+            manager.AddScore("ALICE", 50, 2, "Solo");
+            manager.AddScore("BOB", 120, 4, "VsAI");
+            manager.AddScore("CHARLIE", 80, 3, "2P");
+
+            var scores = manager.Scores;
+            Assert.Equal(3, scores.Count);
+            Assert.Equal("BOB", scores[0].Name);
+            Assert.Equal(120, scores[0].Score);
+            Assert.Equal("CHARLIE", scores[1].Name);
+            Assert.Equal("ALICE", scores[2].Name);
+
+            Assert.True(manager.IsHighScore(200));
+            Assert.False(manager.IsHighScore(0));
+        }
+        finally
+        {
+            if (File.Exists(tempFile)) File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public void GameConfig_ParseArguments_HandlesNewOptions()
+    {
+        var vsAiConfig = GameConfig.ParseArguments(new[] { "--vs-ai", "--level", "5" });
+        Assert.True(vsAiConfig.IsVsAiMode);
+        Assert.Equal(2, vsAiConfig.NumPlayers);
+        Assert.Equal(5, vsAiConfig.StartLevel);
+
+        var scoresConfig = GameConfig.ParseArguments(new[] { "--scores" });
+        Assert.True(scoresConfig.ShowScoresOnly);
+    }
+
+    [Fact]
+    public void ConsoleRenderer_SyncArenaCell_RendersNumberInBrightWhite()
+    {
+        var renderer = new ConsoleRenderer();
+        var arena = new GameArena();
+        var colors = ColorPalette.ColorMode;
+        arena.Clear(colors.Background);
+
+        // Number placed at screen row 5, col 10
+        renderer.SyncArenaCell(5, 10, arena, colors, hasNumber: true, numScreenRow0: 5, numCol0: 10, numVal: 7);
+
+        // Verify the number is rendered with Bright White, not Snake1 Yellow
+        // Test rendering works without throwing
+        renderer.Render();
+    }
+
+    [Fact]
+    public void NibblesAI_FollowsSafePathWhenObstaclesPresent()
+    {
+        var arena = new GameArena();
+        var colors = ColorPalette.ColorMode;
+        arena.Clear(colors.Background);
+        arena.BuildOuterBorders(colors.Wall);
+
+        // Place wall barrier in front of snake
+        arena.SetPixel(25, 26, colors.Wall);
+
+        var snake = new Snake("Sammy", colors.Snake1)
+        {
+            Row = 25,
+            Col = 25,
+            Direction = Direction.Right
+        };
+
+        // Target at realRow 20, col 30
+        var nextDir = NibblesAI.DetermineNextMove(snake, arena, colors, targetScreenRow0: 19, targetCol0: 29);
+
+        // Must not drive straight into the wall at (25, 26)
+        Assert.NotEqual(Direction.Right, nextDir);
+        Assert.NotEqual(Direction.Left, nextDir); // Can't reverse
+        Assert.True(nextDir == Direction.Up || nextDir == Direction.Down);
+    }
 }

@@ -105,29 +105,36 @@ public static class SoundEngine
                 byte[] wavData = SynthesizeWav(tones);
                 if (wavData.Length > 0 && !cts.Token.IsCancellationRequested)
                 {
-                    uint flags = SND_MEMORY | SND_NODEFAULT | (isAsync ? SND_ASYNC : SND_SYNC);
-                    PlaySound(wavData, IntPtr.Zero, flags);
+                    var handle = GCHandle.Alloc(wavData, GCHandleType.Pinned);
+                    try
+                    {
+                        // Play synchronously on current thread (isAsync is already dispatched via Task.Run)
+                        // If Stop() is called, PlaySound(null, ..., SND_PURGE) interrupts this immediately.
+                        uint flags = SND_MEMORY | SND_NODEFAULT | SND_SYNC;
+                        PlaySound(wavData, IntPtr.Zero, flags);
+                    }
+                    finally
+                    {
+                        handle.Free();
+                    }
                     return;
                 }
             }
 
-            // Fallback for non-Windows or if WAV failed: Console.Beep
+            // Fallback for non-Windows or if WAV failed
             foreach (var tone in tones)
             {
                 if (cts.Token.IsCancellationRequested || _isMuted) break;
 
-                if (tone.Frequency > 37 && tone.Frequency < 32767)
+                if (OperatingSystem.IsWindows() && tone.Frequency > 37 && tone.Frequency < 32767)
                 {
                     try
                     {
-                        if (OperatingSystem.IsWindows())
-                        {
-                            Console.Beep(tone.Frequency, Math.Max(10, (int)(tone.DurationMs * 0.85)));
-                        }
+                        Console.Beep(tone.Frequency, Math.Max(10, (int)(tone.DurationMs * 0.85)));
                     }
                     catch
                     {
-                        // Some systems don't support Console.Beep
+                        Thread.Sleep(tone.DurationMs);
                     }
                 }
                 else

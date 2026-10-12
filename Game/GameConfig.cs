@@ -12,6 +12,9 @@ public class GameConfig
     public bool IsDemoMode { get; set; } = false;
     public bool QuickStart { get; set; } = false;
     public bool StartMuted { get; set; } = false;
+    public bool IsVsAiMode { get; set; } = false;
+    public int StartLevel { get; set; } = 1;
+    public bool ShowScoresOnly { get; set; } = false;
 
     /// <summary>
     /// Calculates the initial tick delay in milliseconds based on skill level (1 to 100).
@@ -39,11 +42,20 @@ public class GameConfig
                 PrintHelp();
                 Environment.Exit(0);
             }
+            else if (arg is "--scores" or "-s")
+            {
+                config.ShowScoresOnly = true;
+            }
             else if (arg is "--demo")
             {
                 config.IsDemoMode = true;
                 config.QuickStart = true;
                 config.SkillLevel = 75; // Smooth viewing speed
+            }
+            else if (arg is "--vs-ai" or "--vs-cpu")
+            {
+                config.IsVsAiMode = true;
+                config.NumPlayers = 2;
             }
             else if (arg is "--quick")
             {
@@ -81,6 +93,13 @@ public class GameConfig
                     config.SkillLevel = s;
                 }
             }
+            else if (arg is "--level" && i + 1 < args.Length)
+            {
+                if (int.TryParse(args[++i], out int lvl) && lvl >= 1 && lvl <= 10)
+                {
+                    config.StartLevel = lvl;
+                }
+            }
         }
 
         return config;
@@ -97,9 +116,12 @@ Usage:
 
 Options:
   --demo            Run autonomous AI demonstration mode (press Esc or key to exit)
+  --vs-ai           Play 1 Player against Computer AI (Jake)
   --quick           Skip intro and setup screens, start directly with defaults
   --players <1|2>   Set number of players (1 or 2)
+  --level <1-10>    Set starting maze level (1 to 10)
   --skill <1-100>   Set game speed/skill level (1=Novice, 90=Expert, 100=Twiddle Fingers)
+  --scores          Display high scores leaderboard
   --color           Enable color mode (Default: Blue background, Yellow/Magenta snakes)
   --mono            Enable monochrome monitor mode
   --mute            Start with sound muted

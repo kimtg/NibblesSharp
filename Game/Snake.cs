@@ -31,7 +31,21 @@ public class Snake
     public int Row { get; set; }
     public int Col { get; set; }
     public Direction Direction { get; set; }
-    public Direction QueuedDirection { get; set; }
+    private readonly Queue<Direction> _inputQueue = new(2);
+
+    public Direction QueuedDirection
+    {
+        get => _inputQueue.Count > 0 ? _inputQueue.Peek() : Direction;
+        set
+        {
+            _inputQueue.Clear();
+            if (value != Direction.None && value != Direction)
+            {
+                _inputQueue.Enqueue(value);
+            }
+        }
+    }
+
     public int Lives { get; set; }
     public int Score { get; set; }
     public ConsoleColor Color { get; set; }
@@ -52,27 +66,39 @@ public class Snake
         Row = 0;
         Col = 0;
         Direction = Direction.None;
-        QueuedDirection = Direction.None;
+        _inputQueue.Clear();
         Alive = true;
         Array.Clear(Body, 0, Body.Length);
     }
 
     public void SetDirection(Direction newDir)
     {
-        // Prevent 180-degree immediate reversal into own neck
-        if (Direction == Direction.Up && newDir == Direction.Down) return;
-        if (Direction == Direction.Down && newDir == Direction.Up) return;
-        if (Direction == Direction.Left && newDir == Direction.Right) return;
-        if (Direction == Direction.Right && newDir == Direction.Left) return;
+        if (newDir == Direction.None) return;
 
-        QueuedDirection = newDir;
+        // Check reversal against the last intended direction (either in queue or current direction)
+        Direction referenceDir = _inputQueue.Count > 0 ? _inputQueue.Last() : Direction;
+
+        if (IsOpposite(referenceDir, newDir) || referenceDir == newDir)
+            return;
+
+        // Buffer up to 2 direction changes for responsive cornering
+        if (_inputQueue.Count < 2)
+        {
+            _inputQueue.Enqueue(newDir);
+        }
     }
 
     public void ApplyQueuedDirection()
     {
-        if (QueuedDirection != Direction.None)
+        if (_inputQueue.TryDequeue(out var nextDir))
         {
-            Direction = QueuedDirection;
+            Direction = nextDir;
         }
     }
+
+    public static bool IsOpposite(Direction d1, Direction d2) =>
+        (d1 == Direction.Up && d2 == Direction.Down) ||
+        (d1 == Direction.Down && d2 == Direction.Up) ||
+        (d1 == Direction.Left && d2 == Direction.Right) ||
+        (d1 == Direction.Right && d2 == Direction.Left);
 }

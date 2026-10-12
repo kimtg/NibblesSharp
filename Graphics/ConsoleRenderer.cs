@@ -127,7 +127,7 @@ public class ConsoleRenderer
     /// <summary>
     /// Updates the header line (Screen Row 0, arena rows 1 & 2) with scores and lives.
     /// </summary>
-    public void DrawScores(int numPlayers, Snake sammy, Snake jake, ColorPalette colors)
+    public void DrawScores(int numPlayers, Snake sammy, Snake jake, ColorPalette colors, bool isVsAi = false)
     {
         // Clear row 0 with background color
         for (int c = 0; c < ScreenWidth; c++)
@@ -144,7 +144,8 @@ public class ConsoleRenderer
         if (numPlayers == 2)
         {
             string jakeScore = jake.Score.ToString("#,##0").PadLeft(9);
-            string jakeText = $"{jakeScore}  Lives: {jake.Lives}  <--JAKE";
+            string jakeLabel = isVsAi ? "<--JAKE(AI)" : "<--JAKE";
+            string jakeText = $"{jakeScore}  Lives: {jake.Lives}  {jakeLabel}";
             WriteString(0, 0, jakeText, ConsoleColor.White, colors.Background);
         }
     }
@@ -166,7 +167,7 @@ public class ConsoleRenderer
         {
             _backBuffer[screenRow0, col0] = new ScreenCell(
                 (char)('0' + numVal),
-                colors.Snake1,
+                ConsoleColor.White,
                 colors.Background
             );
             return;

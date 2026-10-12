@@ -11,6 +11,13 @@ public static class Program
         try
         {
             var config = GameConfig.ParseArguments(args);
+            if (config.ShowScoresOnly)
+            {
+                var scores = new HighScoreManager();
+                scores.PrintScoresToConsole();
+                return;
+            }
+
             var game = new NibblesGame(config);
             game.Run();
         }

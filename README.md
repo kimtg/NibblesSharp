@@ -26,9 +26,11 @@ Runs directly in your terminal with zero flickering, authentic PC-Speaker sound 
     4. **Death Crash**: `MBO0L32EFGEFDC`
   - Press `M` anytime to toggle mute.
 
-- **1-Player and 2-Player (Simultaneous) Gameplay**:
+- **1-Player, 1-Player vs. AI, and 2-Player Gameplay**:
   - **Player 1 (SAMMY)**: Arrow keys (`↑`, `↓`, `←`, `→`)
-  - **Player 2 (JAKE)**: `W`, `S`, `A`, `D`
+  - **Player 2 (JAKE)**: `W`, `S`, `A`, `D` (or autonomous AI in `--vs-ai` mode)
+  - **Responsive Input Buffering**: 2-step input queue for razor-sharp cornering without dropped turns.
+  - **Persistent High Scores Leaderboard**: Top-10 scores recorded and displayed (`--scores`).
 
 - **All 9 Classic Level Mazes + Endless Mode**:
   - Every wall coordinate, player spawn point, and initial direction is mathematically identical to the original Microsoft source code.
@@ -43,11 +45,11 @@ Runs directly in your terminal with zero flickering, authentic PC-Speaker sound 
   - Level 9: Diagonal barriers
   - Level 10+: Staggered obstacle field
 
-- **Autonomous AI Demo Mode (`--demo`)**:
-  - Built-in BFS pathfinding and flood-fill survival AI that plays the game autonomously so you can watch and verify gameplay without touching the keyboard.
+- **Autonomous AI & Vs-AI Mode (`--demo` / `--vs-ai`)**:
+  - Built-in BFS pathfinding, cavity trap lookahead, and tail-following survival heuristics that navigate mazes smoothly.
 
 - **Comprehensive Unit Tests**:
-  - 18 automated unit tests verifying PLAY string parser, sound frequencies, arena boundaries, coordinate conversions, level maps, and AI pathfinding.
+  - 35 automated unit tests verifying PLAY string parser, sound frequencies, arena boundaries, input buffering, high scores, coordinate conversions, level maps, and AI pathfinding.
 
 ---
 
@@ -65,15 +67,26 @@ Runs directly in your terminal with zero flickering, authentic PC-Speaker sound 
 dotnet run
 ```
 Follow the classic QBasic prompts to select:
-1. Number of players (1 or 2)
-2. Skill level (1 to 100, where 1=Novice, 90=Expert, 100=Twiddle Fingers)
-3. Increase speed during play (Y or N)
-4. Color or Monochrome monitor (C or M)
+1. Game Mode: (1) Solo, (2) 1 Player vs Computer AI, (3) 2 Players
+2. Starting Level (1 to 10)
+3. Skill level (1 to 100, where 1=Novice, 90=Expert, 100=Twiddle Fingers)
+4. Increase speed during play (Y or N)
+5. Color or Monochrome monitor (C or M)
+
+### 1-Player vs. Computer AI
+```bash
+dotnet run -- --vs-ai
+```
 
 ### Autonomous AI Demonstration Mode
 Watch the computer play the game on its own:
 ```bash
 dotnet run -- --demo
+```
+
+### View High Scores Leaderboard
+```bash
+dotnet run -- --scores
 ```
 
 ### Quick Start (Skip intro prompts)
@@ -88,9 +101,12 @@ Usage:
 
 Options:
   --demo            Run autonomous AI demonstration mode (press Esc or key to exit)
+  --vs-ai           Play 1 Player against Computer AI (Jake)
   --quick           Skip intro and setup screens, start directly with defaults
   --players <1|2>   Set number of players (1 or 2)
+  --level <1-10>    Set starting maze level (1 to 10)
   --skill <1-100>   Set game speed/skill level (1=Novice, 90=Expert, 100=Twiddle Fingers)
+  --scores          Display high scores leaderboard
   --color           Enable color mode (Default: Blue background, Yellow/Magenta snakes)
   --mono            Enable monochrome monitor mode
   --mute            Start with sound muted
@@ -108,7 +124,7 @@ Options:
 | **Move Down** | `↓` (Down Arrow) | `S` |
 | **Move Left** | `←` (Left Arrow) | `A` |
 | **Move Right** | `→` (Right Arrow) | `D` |
-| **Pause / Resume** | `P` | `P` |
+| **Pause / Resume** | `P` or `Space` | `P` or `Space` |
 | **Toggle Mute** | `M` | `M` |
 | **Exit Game** | `Esc` | `Esc` |
 
@@ -120,4 +136,4 @@ Options:
 dotnet test
 ```
 
-Executes 18 automated tests covering all core game logic and sound systems.
+Executes 35 automated tests covering all core game logic, input buffering, high scores, sound systems, and AI heuristics.
